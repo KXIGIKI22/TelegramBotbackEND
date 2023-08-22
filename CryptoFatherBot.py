@@ -32,58 +32,22 @@ def get_crypto_price(crypto):
         return "Невідома криптовалюта"
 
 
-# Функція для обробки команди /start
-def start(update: Update, context: CallbackContext) -> None:
-    update.message.reply_text(
-        'Привіт! Я бот для отримання курсу валют. Введи /commands, щоб побачити список доступних команд.')
+# Функція для отримання погодних даних
+def get_weather(city):
+    api_key = "0c3a23b3418374fa864f71bcf3d5e018"  # Замініть на свій API-ключ
+    url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&units=metric&appid={api_key}"
+    response = requests.get(url)
+    data = response.json()
 
-
-# Функція для обробки команди /commands
-def commands(update: Update, context: CallbackContext) -> None:
-    command_list = [
-        "/start - Почати роботу з ботом",
-        "/commands - Показати список доступних команд",
-        "/exchange - Отримати курс валют",
-        "/weather - Отримати погоду у введеному місті"
-    ]
-    update.message.reply_text('\n'.join(command_list))
-
-
-# Функція для обробки команди /exchange
-def exchange(update: Update, context: CallbackContext) -> None:
-    # Створення клавіатури з кнопками
-    keyboard = [
-        [KeyboardButton("USD"), KeyboardButton("EUR")],
-        [KeyboardButton("Bitcoin"), KeyboardButton("Ethereum")]
-    ]
-    reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True, one_time_keyboard=True)
-
-    update.message.reply_text("Оберіть валюту або криптовалюту:", reply_markup=reply_markup)
-
-
-# Функція для обробки вибору валюти або криптовалюти з клавіатури
-def selected_currency(update: Update, context: CallbackContext) -> None:
-    selected_currency = update.message.text
-    if selected_currency in ["USD", "EUR", "Bitcoin", "Ethereum"]:
-        if selected_currency in ["Bitcoin", "Ethereum"]:
-            price = get_crypto_price(selected_currency.lower())
-            update.message.reply_text(f"Поточна ціна {selected_currency}: {price} USD")
-        else:
-            rate = get_exchange_rate(selected_currency)
-            update.message.reply_text(f"Поточний курс {selected_currency}: {rate}")
+    if data.get('main') and data.get('weather'):
+        temperature = data['main']['temp']
+        description = data['weather'][0]['description']
+        return f"Погода у місті {city}: Температура {temperature}°C, {description.capitalize()}"
     else:
-        update.message.reply_text("Невірно обрано валюту або криптовалюту.")
+        return "Не вдалося отримати погоду для цього міста."
 
 
-# Функція для обробки команди /weather
-def weather(update: Update, context: CallbackContext) -> None:
-    update.message.reply_text("Введіть назву міста для перегляду погоди:")
-
-
-# Функція для обробки повідомлень
-def echo(update: Update, context: CallbackContext) -> None:
-    update.message.reply_text("Ви відправили: " + update.message.text)
-
+# ...
 
 def main():
     # Підключення до Telegram API за допомогою токену бота
@@ -100,6 +64,9 @@ def main():
 
     # Додавання обробників вибору валюти або криптовалюти з клавіатури
     dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, selected_currency))
+
+    # Додавання обробника для отримання погоди за введеним містом
+    dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, get_weather_for_city))
 
     # Запуск бота
     updater.start_polling()
