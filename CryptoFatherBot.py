@@ -1,12 +1,14 @@
+# -*- coding: utf-8 -*-
+from __future__ import annotations
 import logging
 import requests
-from telegram import Update, KeyboardButton, ReplyKeyboardMarkup
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext
+from telegram.ext import Updater, CommandHandler, MessageHandler, CallbackContext
+#from telegram.ext.filters import Filters
+from queue import Queue
 
 # Ініціалізація логгера
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
-
 
 # Функція для отримання курсу валют
 def get_exchange_rate(currency):
@@ -17,8 +19,7 @@ def get_exchange_rate(currency):
     if currency in data['rates']:
         return data['rates'][currency]
     else:
-        return "Невідома валюта"
-
+        return "Unknown currency"
 
 # Функція для отримання курсу криптовалют
 def get_crypto_price(crypto):
@@ -29,12 +30,11 @@ def get_crypto_price(crypto):
     if crypto in data and 'usd' in data[crypto]:
         return data[crypto]['usd']
     else:
-        return "Невідома криптовалюта"
-
+        return "Unknown currency"
 
 # Функція для отримання погодних даних
 def get_weather(city):
-    api_key = "0c3a23b3418374fa864f71bcf3d5e018"  # Замініть на свій API-ключ
+    api_key = "0c3a23b3418374fa864f71bcf3d5e018"
     url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&units=metric&appid={api_key}"
     response = requests.get(url)
     data = response.json()
@@ -42,16 +42,39 @@ def get_weather(city):
     if data.get('main') and data.get('weather'):
         temperature = data['main']['temp']
         description = data['weather'][0]['description']
-        return f"Погода у місті {city}: Температура {temperature}°C, {description.capitalize()}"
+        return f"Weather in city {city}: Temperature {temperature}°C, {description.capitalize()}"
     else:
-        return "Не вдалося отримати погоду для цього міста."
+        return "Could not get weather for this city."
 
+# Функція для обробки команди /start
+def start(update: Update, context: CallbackContext):
+    user = update.effective_user
+    update.message.reply_text(f"Hello, {user.first_name}! I'm your CryptoFatherBot. How can I assist you today?")
 
-# ...
+# Функція для обробки команди /commands
+def commands(update: Update, context: CallbackContext):
+    command_list = [
+        "/start - Start using the bot",
+        "/commands - List of available commands",
+        "/exchange - Get exchange rates of currencies",
+        "/weather - Get weather information of a city"
+    ]
+    update.message.reply_text("\n".join(command_list))
+
+# Функція для обробки команди /exchange
+def exchange(update: Update, context: CallbackContext):
+    update.message.reply_text("Please enter the currency code you want to know the exchange rate for.")
+
+# Функція для обробки команди /weather
+def weather(update: Update, context: CallbackContext):
+    update.message.reply_text("Please enter the city name to get the weather information.")
 
 def main():
+    # Створення черги оновлень
+    update_queue = Queue()
+
     # Підключення до Telegram API за допомогою токену бота
-    updater = Updater("6317225374:AAFe2L_CdrdvHpd0nXjv0dsznRoZwKXnNLs")
+    updater = Updater("6317225374:AAFe2L_CdrdvHpd0nXjv0dsznRoZwKXnNLs", use_context=True, update_queue=update_queue)
 
     # Отримання обробників команд та повідомлень
     dispatcher = updater.dispatcher
@@ -73,7 +96,6 @@ def main():
 
     # Завершення роботи бота після натиснення Ctrl+C
     updater.idle()
-
 
 if __name__ == '__main__':
     main()
